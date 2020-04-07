@@ -4,17 +4,15 @@
 // test stuff
 var chai = require('chai')
 var expect = chai.expect
+var chaiAsPromised = require("chai-as-promised");
 
 // exported library
 var puresql = require('../index')
 
 // single components
 var queryFactory = require('../lib/query')
-var parser = require('../lib/parser')
+var parser = require('../lib/parser2')
 var file = require('../lib/file')
-
-// testing adapter
-var adapter = puresql.adapters.test()
 
 // -- TEST CONSTANTS
 const FILE_SQL_MULTIPLE = __dirname + '/../fixtures/queries/user.sql'
@@ -25,77 +23,153 @@ const FILE_SQL_WRONG = __dirname + '/../fixtures/queries/wrong.sql'
 
 describe('puresql', () => {
 
-  const emptyParameters = {
-    missingParameters:[],
-    undefinedParameters:[],
-    parametersOptions:{}
-  };
+    let adapter;
 
-  it('should return a properly working function when defining a query manually', (done) => {
-    let query = puresql.defineQuery('SELECT * FROM user')
-    expect(query).to.be.a('function')
-    query({}, adapter)
-        .then((result) =>
-          expect(result).to.equal({query: 'SELECT * FROM user', parameter: emptyParameters})
-        )
+    before(() => {
+        adapter = puresql.adapters.test()
+    })
+
+    it('should return a properly working function when defining a query manually', () => {
+        let query = puresql.defineQuery('SELECT * FROM user')
+        expect(query).to.be.a('function')
+        return query({}, adapter)
+            .then((result) => expect(result).to.be.eql({query: 'SELECT * FROM user', parameters: []}))
+    })
+
+    it('should return an object of properly working functions when loading queries from file', () => {
+        let queries = puresql.loadQueries(FILE_SQL_MULTIPLE)
+
+        expect(queries).to.be.an('object')
+        expect(queries.get_with_comment).to.be.a('function')
+
+        return queries.get_with_comment({ids: [4]}, adapter)
+            .then((result) => {
+                expect(result.query).to.equal('SELECT *\n-- here I do something\nFROM user\n-- another comment\n-- breaking comment with name: something\nWHERE id IN (?)')
+            })
+    })
+
+    it('should give parameters to the adapter', () => {
+        let queries = puresql.loadQueries(FILE_SQL_MULTIPLE)
+        expect(queries).to.be.an('object')
+        return queries.get_by_id({id: 42}, adapter)
+            .then((result) => {
+                expect(result.query).to.equal('SELECT *\nFROM user\nWHERE id = ?')
+                expect(result.parameters[0]).to.equal(42);
+            })
+    })
+
+    it('just ignore unnecessary parameters', () => {
+        let queries = puresql.loadQueries(FILE_SQL_MULTIPLE)
+        expect(queries).to.be.an('object')
+        return queries.get_by_id({id: 42, foo: 'bar'}, adapter)
+            .then((result) => {
+                expect(result.query).to.equal('SELECT *\nFROM user\nWHERE id = ?')
+                expect(result.parameters[0]).to.equal(42);
+            })
+    })
+
+    it('should assign parameters in correct order to the adapter', () => {
+        let queries = puresql.defineQuery('SELECT * FROM `Content` WHERE `Content` IN :contentIds AND id = :id')
+        expect(queries).to.be.an('function')
+
+        return queries({id: 42, contentIds: [1, 2, 3, 4]}, adapter)
+            .then((result) => {
+                expect(result.query).to.equal('SELECT * FROM `Content` WHERE `Content` IN (?, ?, ?, ?) AND id = ?')
+                expect(result.parameters).to.eql([1, 2, 3, 4, 42])
+            })
+    })
+
+    it('missing parameters have to trigger an error', function (done) {
+        let queries = puresql.loadQueries(FILE_SQL_MULTIPLE)
+        expect(queries).to.be.an('object')
+
+        try {
+            queries.get_by_id({}, adapter)
+        } catch (e) {
+            expect(e.message).to.equal('Undefined parameter(s) id')
+            done()
+        }
+        throw new Error('undefined parameters need to trigger an error');
+    })
+})
+
+describe('query parser', () => {
+    it('should process unparametrized SQL correctly', () => {
+        expect(
+            parser.parseQuery('SELECT * FROM user', {}).parsedQuery
+        ).to.equal('SELECT * FROM user')
+    })
+
+    it('should process named parameters correctly', () => {
+        const result = parser.parseQuery('SELECT * FROM user WHERE id = :id', {id: 4});
+
+        expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id = ?')
+        expect(result.parsedParameters[0].name).to.equal('id')
+    })
+
+    it('should replace multiple occurences of the same named parameter correctly', () => {
+
+        const result = parser.parseQuery('SELECT * FROM user WHERE id = :id AND uid = :id', {id: 4});
+
+        expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id = ? AND uid = ?')
+        expect(result.parsedParameters[0].name).to.equal('id')
+        expect(result.parsedParameters[1].name).to.equal('id')
+    })
+
+    it('should process array parameter correctly', () => {
+        const result = parser.parseQuery('SELECT * FROM user WHERE id IN :ids', {ids: [1, 2, 3, 4]});
+
+        expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id IN (?, ?, ?, ?)')
+        expect(result.parsedParameters[0].name).to.equal('ids')
+        expect(result.parsedParameters[0].replacement).to.equal('(?, ?, ?, ?)')
+    })
+
+    it('should throw an error when not passing all named parameters', () => {
+        expect(() => {
+            parser.parseQuery('SELECT * FROM user WHERE id = :id AND id = :id2 AND rights = :rights', {id: 1})
+        }).to.throw('Undefined parameter(s) id2,rights')
+    })
+})
+
+// FILE PARSER
+describe('file parser', () => {
+  it('should process multiple command file correctly', () => {
+    let queries = file.parseFile(FILE_SQL_MULTIPLE)
+
+    expect(queries).to.be.an('object')
+    expect(queries.get_by_id).to.equal('SELECT *\nFROM user\nWHERE id = :id')
+    expect(queries.get_all).to.equal('SELECT *\nFROM user')
+    expect(queries.get_with_comment).to.equal('SELECT *\n-- here I do something\nFROM user\n-- another comment\n-- breaking comment with name: something\nWHERE id IN :ids')
+  })
+
+  it('should process single command file correctly', () => {
+    let queries = file.parseFile(FILE_SQL_SINGLE)
+    expect(queries).to.be.an('object')
+    expect(queries.single).to.equal('SELECT *\nFROM user')
+  })
+
+  it('should throw an error with improperly formatted file', () => {
+    expect(() => file.parseFile(FILE_SQL_WRONG)).to.throw(Error)
   })
 })
 
-// // LIBRARY
-// describe('puresql', () => {
-//   it('should return a properly working function when defining a query manually', (done) => {
-//     let query = puresql.defineQuery('SELECT * FROM user')
-//     expect(query).to.be.a('function')
-//     query({}, adapter)
-//     .then((result) => {
-//       expect(result).to.equal('SELECT * FROM user')
-//       done()
-//     })
-//   })
-//
-//   it('should return an object of properly working functions when loading queries from file', (done) => {
-//     let queries = puresql.loadQueries(FILE_SQL_MULTIPLE)
-//     expect(queries).to.be.an('object')
-//     expect(queries.get_by_id).to.be.a('function')
-//     queries.get_all({}, adapter)
-//     .then((result) => {
-//       expect(result).to.equal('SELECT *\nFROM user')
-//       done()
-//     })
-//   })
-// })
-//
+// QUERY FACTORY
+describe('query factory', () => {
+  it('should return a promisied function', () => {
+    let query = queryFactory.makeQuery('SELECT * FROM user')
+    expect(query).to.be.a('function')
+  })
+
+  it('should return a funtion that fail if adapter is not provided', () => {
+    let query = queryFactory.makeQuery('SELECT * FROM user')
+    expect(() => {
+      query({})
+    }).to.throw()
+  })
+})
+
+
 // // QUERY PARSER
-// describe('query parser', () => {
-//   it('should process unparametrized SQL correctly', () => {
-//     expect(
-//       parser.parseQuery({}, 'SELECT * FROM user', adapter)
-//     ).to.equal('SELECT * FROM user')
-//   })
-//
-//   it('should process named parameters correctly', () => {
-//     expect(
-//       parser.parseQuery({id: 1}, 'SELECT * FROM user WHERE id = :id', adapter)
-//     ).to.equal('SELECT * FROM user WHERE id = 1')
-//   })
-//
-//   it('should replace multiple occurences of the same named parameter correctly', () => {
-//     expect(
-//       parser.parseQuery({id: 1}, 'SELECT * FROM user WHERE id = :id AND uid = :id', adapter)
-//     ).to.equal('SELECT * FROM user WHERE id = 1 AND uid = 1')
-//   })
-//
-//   it('should process anonymous parameters correctly', () => {
-//     expect(
-//       parser.parseQuery({'?': [1, 2]}, 'SELECT * FROM user WHERE id = :? OR id = :?', adapter)
-//     ).to.equal('SELECT * FROM user WHERE id = 1 OR id = 2')
-//   })
-//
-//   it('should process array parameter correctly', () => {
-//     expect(
-//       parser.parseQuery({ids: [1, 2, 3, 4]}, 'SELECT * FROM user WHERE id IN :ids', adapter)
-//     ).to.equal('SELECT * FROM user WHERE id IN (1, 2, 3, 4)')
-//   })
 //
 //   it('should process recursive array parameter correctly', () => {
 //     expect(
@@ -141,24 +215,6 @@ describe('puresql', () => {
 //     ).to.equal('SELECT * FROM user WHERE position = manager AND division = sales')
 //   })
 //
-//   it('should process a dangerous parameter correctly', () => {
-//     expect(
-//       parser.parseQuery({'!order': 'id ASC'}, 'SELECT * FROM user ORDER BY :!order', adapter)
-//     ).to.equal('SELECT * FROM user ORDER BY id ASC')
-//   })
-//
-//   it('should throw an error when not passing all named parameters', () => {
-//     expect(() => {
-//       parser.parseQuery({id: 1}, 'SELECT * FROM user WHERE id = :id AND rights = :rights', adapter)
-//     }).to.throw()
-//   })
-//
-//   it('should throw an error when passing too many named parameters', () => {
-//     expect(() => {
-//       parser.parseQuery({id: 1, rights: 1, foo: 1}, 'SELECT * FROM user WHERE id = :id AND rights = :rights', adapter)
-//     }).to.throw()
-//   })
-//
 //   it('should throw an error when passing wrong number of anonymous parameters', () => {
 //     expect(() => {
 //       parser.parseQuery({'?': [1]}, 'SELECT * FROM user WHERE id = :? AND rights = :?', adapter)
@@ -183,41 +239,4 @@ describe('puresql', () => {
 //     ).to.equal('SELECT * FROM user ORDER BY id ')
 //   })
 //
-// })
-//
-// // FILE PARSER
-// describe('file parser', () => {
-//   it('should process multiple command file correctly', () => {
-//     let queries = file.parseFile(FILE_SQL_MULTIPLE)
-//
-//     expect(queries).to.be.an('object')
-//     expect(queries.get_by_id).to.equal('SELECT *\nFROM user\nWHERE id = :id')
-//     expect(queries.get_all).to.equal('SELECT *\nFROM user')
-//     expect(queries.get_with_comment).to.equal('SELECT *\n-- here I do something\nFROM user\n-- another comment\n-- breaking comment with name: something\nWHERE id IN :ids')
-//   })
-//
-//   it('should process single command file correctly', () => {
-//     let queries = file.parseFile(FILE_SQL_SINGLE)
-//     expect(queries).to.be.an('object')
-//     expect(queries.single).to.equal('SELECT *\nFROM user')
-//   })
-//
-//   it('should throw an error with improperly formatted file', () => {
-//     expect(() => file.parseFile(FILE_SQL_WRONG)).to.throw(Error)
-//   })
-// })
-//
-// // QUERY FACTORY
-// describe('query factory', () => {
-//   it('should return a promisied function', () => {
-//     let query = queryFactory.makeQuery('SELECT * FROM user')
-//     expect(query).to.be.a('function')
-//   })
-//
-//   it('should return a funtion that fail if adapter is not provided', () => {
-//     let query = queryFactory.makeQuery('SELECT * FROM user')
-//     expect(() => {
-//       query({})
-//     }).to.throw()
-//   })
 // })
