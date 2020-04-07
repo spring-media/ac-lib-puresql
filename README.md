@@ -1,14 +1,7 @@
 # puresql
 
-[![npm version](https://badge.fury.io/js/puresql.svg)](https://badge.fury.io/js/puresql)
-[![Build Status](https://travis-ci.org/neonerd/puresql.svg?branch=master)](https://travis-ci.org/neonerd/puresql)
-[![Dependency Status](https://david-dm.org/neonerd/puresql.svg)](https://david-dm.org/neonerd/puresql)
-[![Coverage Status](https://coveralls.io/repos/github/neonerd/puresql/badge.svg?branch=master)](https://coveralls.io/github/neonerd/puresql?branch=master)
-[![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
-
-puresql is a SQL library for node.js, heavily inspired by Clojure's [yesql](https://github.com/krisajenkins/yesql). It supports *MySQL*, *MariaDB*, *PostgreSQL*, *MS SQL Server* and *SQLite* from the box.
-
-Note: This README is aimed at Node 8.0.0 and higher and does not contain examples for generator-based workflow. See README_OLD.md for the previous version of documentation.
+This lib is based upon [puresql](https://github.com/neonerd/puresql).
+This lib read sql files and map incomming parameters against the query-parameter to build prepared statements with [mysql2](https://www.npmjs.com/package/mysql2).  
 
 ## Intro
 
@@ -145,7 +138,7 @@ queries.get_by_ids({ids:[1, 2, 3, 4]}, adapter)
 // SELECT * FROM user WHERE id IN (1, 2, 3, 4)
 ```
 
-Sub-arrays:
+Sub-arrays (do be adopted):
 ```js
 // INSERT INTO user (name) VALUES :values
 queries.create_users({values: [['john'], ['mark']]}, adapter)
@@ -159,28 +152,21 @@ queries.get_by_position_and_division({position:'manager'}, adapter)
 // Throws an error
 ```
 
-Dangerous parameters (unescaped):
-```js
-// SELECT * FROM user ORDER BY :!order
-queries.get_users({'!order': 'id ASC'}, adapter)
-// SELECT * FROM user ORDER BY id ASC
-```
-
-Object parameters (insert):
+Object parameters (insert) (do be adopted):
 ```js
 // INSERT INTO user (name, surname) VALUES :$user
 queries.insert_user({'$user': {name: 'John', surname: 'Doe'}}, adapter)
 // INSERT INTO user (name, surname) VALUES ('John', 'Doe')
 ```
 
-Object parameters (update):
+Object parameters (update) (do be adopted):
 ```js
 // UPDATE user SET :@user
 queries.insert_user({'@user': {name: 'John', surname: 'Doe'}}, adapter)
 // UPDATE user SET name = 'John', surname = 'Doe'
 ```
 
-Concitioned parameters:
+Concitioned parameters (do be adopted):
 ```js
 // SELECT * FROM user ORDER BY name :*limit{LIMIT *!}
 queries.get_users({'*limit': 10}, adapter)
@@ -189,7 +175,7 @@ queries.get_users({}, adapter)
 // SELECT * FROM user ORDER BY name
 ```
 
-## Dynamic parameters
+## Dynamic parameters (do be adopted)
 
 When building parts of query dynamically (i.e. table filtering), you can use the dynamic (~) parameter type.
 

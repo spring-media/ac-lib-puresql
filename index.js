@@ -32,13 +32,7 @@ module.exports = {
   // usage: require('puresql').adapters.mysql(mysqlConnection)
   adapters: {
     // mySQL using 'mysql' module
-    mysql: require('./lib/adapters/mysql'),
-    // SQLite using 'sqlite3' module
-    sqlite: require('./lib/adapters/sqlite'),
-    // msSQL experimental adapter using 'mssql' module
-    mssql: require('./lib/adapters/mssql'),
-    // Postgres experimental adapter using 'pg' module
-    pg: require('./lib/adapters/pg'),
+    mysql2: require('./lib/adapters/mysql2'),
     // dummy adapter for testing purposes
     test: require('./lib/adapters/test')
   }
