@@ -129,6 +129,16 @@ describe('query parser', () => {
             parser.parseQuery('SELECT * FROM user WHERE id = :id AND id = :id2 AND rights = :rights', {id: 1})
         }).to.throw('Undefined parameter(s) id2,rights')
     })
+
+    it('should add optional part when parameter is present', () => {
+        const result = parser.parseQuery('SELECT * FROM user ORDER BY id :*limit{LIMIT *}', {'*limit': 10});
+        expect(result.parsedQuery).to.equal('SELECT * FROM user ORDER BY id LIMIT ?')
+    })
+
+    it('should remove optional part when parameter is not present', () => {
+        const result = parser.parseQuery('SELECT * FROM user ORDER BY id :*limit{LIMIT *}', {});
+        expect(result.parsedQuery).to.equal('SELECT * FROM user ORDER BY id')
+    })
 })
 
 // FILE PARSER
