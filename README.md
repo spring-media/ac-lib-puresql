@@ -1,7 +1,9 @@
 # puresql
 
 This lib is based upon [puresql](https://github.com/neonerd/puresql).
-This lib read sql files and map incomming parameters against the query-parameter to build prepared statements with [mysql2](https://www.npmjs.com/package/mysql2).  
+This lib read sql files and map incomming parameters against the query-parameter to build prepared statements with [mysql2](https://www.npmjs.com/package/mysql2).
+
+Until now: this lib can handle SELECT queries only.
 
 ## Intro
 
@@ -35,7 +37,7 @@ const rows = await db.get_user_by_id({id:1}, adapter)
 ## Installation
 
 ```
-npm install puresql
+npm install ac-lib-puresql
 ```
 
 ## Usage
@@ -107,72 +109,65 @@ If query function doesn't get all the parameters it needs, it throws an error.
 
 Named parameters support modifiers. Cheatsheet:
 
-|Modifier|Name|Example|Input|Output|Is sanitized?|
+|Implemented|Modifier|Name|Example|Parameter Input|Part in Query| 
 |---|---|---|---|---|---|
-|(blank)|Normal parameter|:id|1|1|Yes|
-|!|Dangerous parameter|:!order|ORDER ASC|ORDER ASC|No|
-|$|Object parameter (insert)|:$user{name,rights}|{name:'foo', rights:'bar'}|('foo', 'bar')|Yes|
-|@|Object parameter (update)|:@user{name,rights}|{name:'foo', rights:'bar'}|name = 'foo', rights = 'bar'|Yes|
-|$ or @|Object parameter (schemaless)|:$user|{name:'foo', rights:'bar', somethingElse: 'test'}|('foo', 'bar', 'test')|Yes|
-|*|Conditioned parameter|:\*limit{LIMIT \*}|10|LIMIT 10 (if '\*limit' parameter is not undefined)|No|
-|~|Dynamic conditions|:~conditions|see bellow|see bellow|Not applicable|
+|YES|(blank)|Anonymous parameter|:?|{'?':[1]}|?|
+|YES|(blank)|Normal named parameter|:id|{id:1}|?|
+|YES|(blank)|Array Parameters|:ids|{ids:[1,2]}|(?,?)|
+|NO|$|Object parameter (insert)|:$user{name,rights}|{name:'foo', rights:'bar'}|('foo', 'bar')|
+|NO|@|Object parameter (update)|:@user{name,rights}|{name:'foo', rights:'bar'}|name = 'foo', rights = 'bar'|
+|NO|$ or @|Object parameter (schemaless)|:$user|{name:'foo', rights:'bar', somethingElse: 'test'}|('foo', 'bar', 'test')|
+|YES|*|Optional parameter|:\*limit{LIMIT \*}|10|LIMIT 10 (if '\*limit' parameter is not undefined)|
+|NO|~|Dynamic conditions|:~conditions|see bellow|see bellow|
 
 Named parameter:
 ```js
 // SELECT * FROM user WHERE id = :id
-queries.get_by_id({id:1}, adapter)
-// SELECT * FROM user WHERE id = 1
+queries.get_by_id({id:42}, adapter)
+// Query: SELECT * FROM user WHERE id = ?
+// Parameters: [42]
 ```
 
-Unnamed parameters:
+Unnamed parameters (to be adopted):
 ```js
 // SELECT * FROM user WHERE id = :? OR id = :?
 queries.get_or({'?':[1, 2]}, adapter)
-// SELECT * FROM user WHERE id = 1 OR id = 2
+// Query: SELECT * FROM user WHERE id = ? OR id = ?
+// Parameters: [1, 2]
 ```
 
 Array:
 ```js
 // SELECT * FROM user WHERE id IN :ids
 queries.get_by_ids({ids:[1, 2, 3, 4]}, adapter)
-// SELECT * FROM user WHERE id IN (1, 2, 3, 4)
+// Query: SELECT * FROM user WHERE id IN (?, ?, ?, ?)
+// Parameters: [1, 2, 3, 4]
 ```
 
-Sub-arrays (do be adopted):
-```js
-// INSERT INTO user (name) VALUES :values
-queries.create_users({values: [['john'], ['mark']]}, adapter)
-// INSERT INTO user (name) VALUES ("john"), ("mark")
-```
-
-Parameter validation:
+Parameter existence validation:
 ```js
 // SELECT * FROM user WHERE position = :position AND division = :division
 queries.get_by_position_and_division({position:'manager'}, adapter)
 // Throws an error
 ```
 
-Object parameters (insert) (do be adopted):
+Ignore unnecessary parameter:
 ```js
-// INSERT INTO user (name, surname) VALUES :$user
-queries.insert_user({'$user': {name: 'John', surname: 'Doe'}}, adapter)
-// INSERT INTO user (name, surname) VALUES ('John', 'Doe')
+// SELECT * FROM user WHERE position = :position
+queries.get_by_position_and_division({position:'manager', division:'spring-media'}, adapter)
+// Query: SELECT * FROM user WHERE position = ?
+// Parameters: ['manager']
 ```
 
-Object parameters (update) (do be adopted):
-```js
-// UPDATE user SET :@user
-queries.insert_user({'@user': {name: 'John', surname: 'Doe'}}, adapter)
-// UPDATE user SET name = 'John', surname = 'Doe'
-```
-
-Concitioned parameters (do be adopted):
+Optional parameters:
 ```js
 // SELECT * FROM user ORDER BY name :*limit{LIMIT *!}
 queries.get_users({'*limit': 10}, adapter)
+// Query: SELECT * FROM user ORDER BY name LIMIT ?
+// Parameters: [10]
 queries.get_users({}, adapter)
-// SELECT * FROM user ORDER BY name LIMIT 10
-// SELECT * FROM user ORDER BY name
+// Query: SELECT * FROM user ORDER BY name
+// Parameters: []
 ```
 
 ## Dynamic parameters (do be adopted)
@@ -191,43 +186,14 @@ queries.search_users({'~conditions':{
 // SELECT * FROM user WHERE position = "manager" AND division = "division"
 ```
 
-## ES 6/7
-
-With async/await, we can now take our SQL functions and use them in a sync-like way, avoiding the callback / .then() hell.
-
-```js
-// ES2015 (node.js >8)
-async function test () {
-  const rows = await queries.get_all({}, adapter)
-  console.log(rows)
-}
-```
-
-## Koa
-
-As Koa (>2.0.0) uses async/await workflow by default, puresql works out-of-box there too!
-
-```js
-const koa = require("koa")
-// Create a simple server
-const app = koa()
-
-app.use(async function() {
-  // Like sync, but async!
-  const rows = await queries.get_all({}, adapter)
-  this.body = JSON.stringify(rows)
-})
-
-app.listen(3000)
-```
-
 ## Security
 
-puresql automatically escapes the provided parameters using the adapter's escape function. The bundled adapters all use underlying drivers to escape safely. You should pay attention to properly implementing escaping when providing your own adapter.
+ac-lib-puresql didn't escapes any parameter at all, because mysqls prepared statements are there for it [reference](https://stackoverflow.com/questions/24988867/when-should-i-use-prepared-statements#answers).
+Only identifier has to escaped properly.
 
 ## Database support
 
-puresql provides its own default adapters for MySQL (MariaDB), PostgreSQL, MS SQL Server and sqlite. They are accessible through puresql.adapter.X functions as described below.
+ac-lib-puresql provides its own default adapters for MySQL2 but is extensable by other adapters. They are accessible through puresql.adapter.X functions as described below.
 
 ### puresql.adapters.mysql(mysqlConnection, debugFn)
 
@@ -248,70 +214,6 @@ const connection = mysql.createConnection({
 // create the adapter
 const adapter = puresql.adapters.mysql(connection)
 ```
-
-This adapter can optionally take debugFn function as a parameter. This function will receive the processed query before it runs.
-
-This adapter exposes the lastInsertId value on itself.
-
-```js
-await queries.insert({data:['foo', 'bar']}, mysqlAdapter)
-console.log(mysqlAdapter.lastInsertId)
-// should output the ID of the last inserted row if possible
-```
-
-### puresql.adapters.sqlite(db, debugFn)
-
-Returns an SQLite adapter. Takes a db object from 'sqlite3' module as parameter.
-
-```js
-// dependencies
-const sqlite3 = require('sqlite3')
-const puresql = require('puresql')
-// create the db adapter will use
-const db = new sqlite3.Database(':memory:')
-const adapter = puresql.adapters.sqlite(db)
-```
-
-This adapter can optionally take debugFn function as a parameter. This function will receive the processed query before it runs.
-
-### puresql.adapters.mssql(mssqlConnection, debugFn)
-
-Returns a SQL Server adapter. Takes a connection object from 'mssql' module as parameter.
-
-Note: The mssql adapter currently only works with mssql version 3.x.x. The newest 4.x.x version is currently not supported.
-
-```js
-// dependencies
-const mssql = require('mssql')
-const puresql = require('puresql')
-// create a connection the adapter will use
-mssql.connect(CREDENTIALS)
-.then(function () {
-  // create the adapter
-  const adapter = puresql.adapters.mssql(mssql)
-})
-```
-
-This adapter can optionally take debugFn function as a parameter. This function will receive the processed query before it runs.
-
-### puresql.adapters.pg(pgConnection, debugFn)
-
-Returns a PostgreSQL adapter. Takes a client instance from 'pg' module as parameter.
-
-```js
-// dependencies
-const pg = require('pg')
-const puresql = require('puresql')
-// create a connection the adapter will use
-const client = new pg.Client(config)
-// create the adapter
-const adapter = puresql.adapters.pg(client)
-pg.connect((err) => {
-  // do something
-})
-```
-
-This adapter can optionally take debugFn function as a parameter. This function will receive the processed query before it runs.
 
 ## API
 
@@ -345,7 +247,14 @@ const query = puresql.defineQuery("SELECT * FROM user WHERE id = :id")
 
 ### puresql.adapters.test()
 
-Returns a testing adapter. This adapter always returns the parsed SQL query (with parameters replaced by passed values) as a result.
+Returns a testing adapter. This adapter always returns the parsed SQL query together with its sorted parameters as a result:
+
+```json
+{
+  query: 'SELECT * FROM user',
+  parameters: []
+}
+```
 
 ## License
 
