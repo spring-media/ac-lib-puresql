@@ -150,39 +150,39 @@ describe('query parser', () => {
 
 // FILE PARSER
 describe('file parser', () => {
-  it('should process multiple command file correctly', () => {
-    let queries = file.parseFile(FILE_SQL_MULTIPLE)
+    it('should process multiple command file correctly', () => {
+        let queries = file.parseFile(FILE_SQL_MULTIPLE)
 
-    expect(queries).to.be.an('object')
-    expect(queries.get_by_id).to.equal('SELECT *\nFROM user\nWHERE id = :id')
-    expect(queries.get_all).to.equal('SELECT *\nFROM user')
-    expect(queries.get_with_comment).to.equal('SELECT *\n-- here I do something\nFROM user\n-- another comment\n-- breaking comment with name: something\nWHERE id IN :ids')
-  })
+        expect(queries).to.be.an('object')
+        expect(queries.get_by_id).to.equal('SELECT *\nFROM user\nWHERE id = :id')
+        expect(queries.get_all).to.equal('SELECT *\nFROM user')
+        expect(queries.get_with_comment).to.equal('SELECT *\n-- here I do something\nFROM user\n-- another comment\n-- breaking comment with name: something\nWHERE id IN :ids')
+    })
 
-  it('should process single command file correctly', () => {
-    let queries = file.parseFile(FILE_SQL_SINGLE)
-    expect(queries).to.be.an('object')
-    expect(queries.single).to.equal('SELECT *\nFROM user')
-  })
+    it('should process single command file correctly', () => {
+        let queries = file.parseFile(FILE_SQL_SINGLE)
+        expect(queries).to.be.an('object')
+        expect(queries.single).to.equal('SELECT *\nFROM user')
+    })
 
-  it('should throw an error with improperly formatted file', () => {
-    expect(() => file.parseFile(FILE_SQL_WRONG)).to.throw(Error)
-  })
+    it('should throw an error with improperly formatted file', () => {
+        expect(() => file.parseFile(FILE_SQL_WRONG)).to.throw(Error)
+    })
 })
 
 // QUERY FACTORY
 describe('query factory', () => {
-  it('should return a promisied function', () => {
-    let query = queryFactory.makeQuery('SELECT * FROM user')
-    expect(query).to.be.a('function')
-  })
+    it('should return a promisied function', () => {
+        let query = queryFactory.makeQuery('SELECT * FROM user')
+        expect(query).to.be.a('function')
+    })
 
-  it('should return a funtion that fail if adapter is not provided', () => {
-    let query = queryFactory.makeQuery('SELECT * FROM user')
-    expect(() => {
-      query({})
-    }).to.throw()
-  })
+    it('should return a funtion that fail if adapter is not provided', () => {
+        let query = queryFactory.makeQuery('SELECT * FROM user')
+        expect(() => {
+            query({})
+        }).to.throw()
+    })
 })
 
 
