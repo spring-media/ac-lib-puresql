@@ -139,6 +139,13 @@ describe('query parser', () => {
         const result = parser.parseQuery('SELECT * FROM user ORDER BY id :*limit{LIMIT *}', {});
         expect(result.parsedQuery).to.equal('SELECT * FROM user ORDER BY id')
     })
+
+    it('should not match timestamp values', () => {
+        const result = parser.parseQuery("SELECT * FROM user WHERE timestamp = '0000-00-00 00:00:00' OR id = :id", {'id': 42});
+        expect(result.parsedQuery).to.equal("SELECT * FROM user WHERE timestamp = '0000-00-00 00:00:00' OR id = ?")
+        expect(result.parsedParameters[0].name).to.equal('id')
+    })
+
 })
 
 // FILE PARSER
