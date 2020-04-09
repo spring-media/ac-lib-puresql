@@ -104,7 +104,7 @@ describe('query parser', () => {
         const result = parser.parseQuery('SELECT * FROM user WHERE id = :id', {id: 4});
 
         expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id = ?')
-        expect(result.parsedParameters[0].name).to.equal('id')
+        expect(result.queryParameters[0].name).to.equal('id')
     })
 
     it('should replace multiple occurences of the same named parameter correctly', () => {
@@ -112,16 +112,16 @@ describe('query parser', () => {
         const result = parser.parseQuery('SELECT * FROM user WHERE id = :id AND uid = :id', {id: 4});
 
         expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id = ? AND uid = ?')
-        expect(result.parsedParameters[0].name).to.equal('id')
-        expect(result.parsedParameters[1].name).to.equal('id')
+        expect(result.queryParameters[0].name).to.equal('id')
+        expect(result.queryParameters[1].name).to.equal('id')
     })
 
     it('should process array parameter correctly', () => {
         const result = parser.parseQuery('SELECT * FROM user WHERE id IN :ids', {ids: [1, 2, 3, 4]});
 
         expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id IN (?, ?, ?, ?)')
-        expect(result.parsedParameters[0].name).to.equal('ids')
-        expect(result.parsedParameters[0].replacement).to.equal('(?, ?, ?, ?)')
+        expect(result.queryParameters[0].name).to.equal('ids')
+        expect(result.queryParameters[0].replacement).to.equal('(?, ?, ?, ?)')
     })
 
     it('should throw an error when not passing all named parameters', () => {
@@ -143,7 +143,7 @@ describe('query parser', () => {
     it('should not match timestamp values', () => {
         const result = parser.parseQuery("SELECT * FROM user WHERE timestamp = '0000-00-00 00:00:00' OR id = :id", {'id': 42});
         expect(result.parsedQuery).to.equal("SELECT * FROM user WHERE timestamp = '0000-00-00 00:00:00' OR id = ?")
-        expect(result.parsedParameters[0].name).to.equal('id')
+        expect(result.queryParameters[0].name).to.equal('id')
     })
 
 })
