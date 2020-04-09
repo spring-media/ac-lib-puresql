@@ -100,6 +100,19 @@ describe('query parser', () => {
         ).to.equal('SELECT * FROM user')
     })
 
+    it('should process anonymous parameters', () => {
+        const result = parser.parseQuery('SELECT * FROM user WHERE id = :? AND rights = :?', {'?': [45, 42]})
+
+        expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE id = ? AND rights = ?')
+        expect(result.userValues).to.eql([45, 42])
+    })
+
+    it('should throw an error when passing wrong number of anonymous parameters', () => {
+        expect(() => {
+            parser.parseQuery('SELECT * FROM user WHERE id = :? AND rights = :?', {'?': [4]})
+        }).to.throw('Undefined parameter(s)')
+    })
+
     it('should process named parameters correctly', () => {
         const result = parser.parseQuery('SELECT * FROM user WHERE id = :id', {id: 4});
 

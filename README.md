@@ -111,7 +111,7 @@ Named parameters support modifiers. Cheatsheet:
 
 |Implemented|Modifier|Name|Example|Parameter Input|Part in Query| 
 |---|---|---|---|---|---|
-|YES|(blank)|Anonymous parameter|:?|{'?':[1]}|?|
+|YES|(blank)|Anonymous parameter|:?|{'?':[1,3]}|?|
 |YES|(blank)|Normal named parameter|:id|{id:1}|?|
 |YES|(blank)|Array Parameters|:ids|{ids:[1,2]}|(?,?)|
 |NO|$|Object parameter (insert)|:$user{name,rights}|{name:'foo', rights:'bar'}|('foo', 'bar')|
