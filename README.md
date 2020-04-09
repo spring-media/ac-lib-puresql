@@ -118,7 +118,7 @@ Named parameters support modifiers. Cheatsheet:
 |NO|@|Object parameter (update)|:@user{name,rights}|{name:'foo', rights:'bar'}|name = 'foo', rights = 'bar'|
 |NO|$ or @|Object parameter (schemaless)|:$user|{name:'foo', rights:'bar', somethingElse: 'test'}|('foo', 'bar', 'test')|
 |YES|*|Optional parameter|:\*limit{LIMIT \*}|10|LIMIT 10 (if '\*limit' parameter is not undefined)|
-|NO|~|Dynamic conditions|:~conditions|see bellow|see bellow|
+|YES|~|Dynamic conditions|:~conditions|see bellow|see bellow|
 
 Named parameter:
 ```js

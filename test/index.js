@@ -146,6 +146,21 @@ describe('query parser', () => {
         expect(result.queryParameters[0].name).to.equal('id')
     })
 
+    it('should process a dynamic parameter correctly', () => {
+        const result = parser.parseQuery('SELECT * FROM user WHERE :~conditions', {
+            '~conditions': [{
+                operator: 'AND',
+                terms: [
+                    {sql: 'position = :position', parameters: {position: 'manager'}},
+                    {sql: 'division = :division', parameters: {division: 'sales'}},
+                ]
+            }]
+        })
+
+        expect(result.parsedQuery).to.equal('SELECT * FROM user WHERE (position = ? AND division = ?)')
+        expect(result.userValues).to.eql(['manager', 'sales'])
+    })
+
 })
 
 // FILE PARSER
