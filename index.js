@@ -36,5 +36,4 @@ module.exports = {
     // dummy adapter for testing purposes
     test: require('./lib/adapters/test')
   }
-
 }

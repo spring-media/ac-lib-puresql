@@ -1,18 +1,17 @@
 {
-  "name": "ac-lib-puresql",
-  "version": "1.8.0",
+  "name": "@ac/ac-lib-puresql",
+  "version": "2.0.1",
   "description": "forks puresql. SQL library for node.js inspired by Clojure's yesql",
   "engines": {
     "node": ">= 6.0.0"
   },
   "main": "index.js",
+  "types": "index.d.ts",
+  "typings": "index.d.ts",
   "scripts": {
     "test": "nyc mocha --recursive --inline-diff --exit",
     "watch": "mocha --watch --recursive --inline-diff",
     "watch-filter": "mocha --watch --recursive --inline-diff -g "
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
   },
   "author": "Christian Waltjen",
   "license": "MIT",
@@ -24,5 +23,7 @@
     "mysql2": "^2.1.0",
     "nyc": "^14.1.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@types/mysql2": "github:types/mysql2"
+  }
 }
