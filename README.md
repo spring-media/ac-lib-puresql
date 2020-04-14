@@ -73,7 +73,7 @@ WHERE id = :? OR id = :?
 basic.js
 ```js
 const mysql = require("mysql")
-const puresql = require("puresql")
+const puresql = require("ac-lib-puresql")
 
 // Create a connection the adapter will use
 const connection = mysql.createConnection({
