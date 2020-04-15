@@ -3,11 +3,12 @@ import { Connection, RowDataPacket } from 'mysql2';
 export interface Parameters {[key: string]: any}
 
 export interface DatabaseAdapter {
-    new(n: Connection): DatabaseAdapter;
-
-    query(query: string, parameters: Parameters)
+    query(query: string, parameters: Parameters): Promise<RowDataPacket>
     escapeIdentifier(identifier: string): string
 }
+
+type MysqlAdapterFactory = (connection: Connection, debugFn?: () => {}) => DatabaseAdapter
+type TestAdapterFactory = () => DatabaseAdapter
 
 type Query  = (parameters: Parameters, adapter: DatabaseAdapter) => Promise<RowDataPacket>;
 
@@ -19,6 +20,6 @@ export function defineQuery(sql: string): Query
 export function loadQueries(filePath: string): QueryList
 
 export const adapters: {
-    mysql2: DatabaseAdapter,
-    test: DatabaseAdapter
+    mysql2: MysqlAdapterFactory,
+    test: TestAdapterFactory
 }
