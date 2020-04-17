@@ -1,6 +1,6 @@
 {
   "name": "@ac/ac-lib-puresql",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "forks puresql. SQL library for node.js inspired by Clojure's yesql",
   "engines": {
     "node": ">= 6.0.0"
