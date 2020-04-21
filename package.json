@@ -25,5 +25,10 @@
   },
   "dependencies": {
     "@types/mysql2": "github:types/mysql2"
+  },
+  "directories": {
+    "example": "examples",
+    "lib": "lib",
+    "test": "test"
   }
 }
